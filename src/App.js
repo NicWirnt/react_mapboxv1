@@ -26,6 +26,16 @@ function App() {
     }
   };
 
+  //make a popup display funciton
+  const popup = (coordinates, description) => {
+    new mapboxgl.Popup({
+      closeOnMove: true,
+    })
+      .setLngLat(coordinates)
+      .setHTML(description)
+      .addTo(map.current);
+  };
+
   useEffect(() => {
     //Initialise map
     map.current = new mapboxgl.Map({
@@ -51,7 +61,12 @@ function App() {
       mapboxgl: mapboxgl,
       //limit country only for australia
       countries: "au",
-      container: search.current,
+      //limit search country, region, postcode, district, place, locality, neighborhood, address, poi, poi.landmark
+      types: "postcode",
+      flyTo: false,
+      collapsed: true,
+
+      // container: search.current,
     });
 
     map.current.on("load", () => {
@@ -60,32 +75,40 @@ function App() {
       //   data: climateData,
       // });
 
-      map.current.addLayer({
-        id: "climate-fills",
-        type: "fill",
-        source: climateDataFill,
-        layout: {},
-        paint: {
-          "fill-color": "#627BC1",
-          "fill-opacity": [
-            "case",
-            ["boolean", ["feature-state", "hover"], false],
-            0.5,
-            0.2,
-          ],
-        },
-      });
+      //condition to prevent double layers
+      if (
+        !map.current.style._layers[
+          `climate-fills-hover
+        `
+        ]
+      ) {
+        map.current.addLayer({
+          id: "climate-fills-hover",
+          type: "fill",
+          source: climateDataFill,
+          layout: {},
+          paint: {
+            "fill-color": "#627BC1",
+            "fill-opacity": [
+              "case",
+              ["boolean", ["feature-state", "hover"], false],
+              0.5,
+              0,
+            ],
+          },
+        });
+      }
 
-      map.current.addLayer({
-        id: "climate-borders",
-        type: "line",
-        source: climateDataFill,
-        layout: {},
-        paint: {
-          "line-color": "#627BC1",
-          "line-width": 1,
-        },
-      });
+      // map.current.addLayer({
+      //   id: "climate-borders",
+      //   type: "line",
+      //   source: climateDataFill,
+      //   layout: {},
+      //   paint: {
+      //     "line-color": "#627BC1",
+      //     "line-width": 1,
+      //   },
+      // });
     });
 
     //setting the layer to none
@@ -95,11 +118,16 @@ function App() {
     });
     //Displaying Search Bar
     map.current.addControl(geoCoderSearch, "top-left");
-    console.log(
-      geoCoderSearch.on("results", (results) => {
-        console.log(results);
-      })
-    );
+
+    geoCoderSearch.on("result", (e) => {
+      const coordinates = e.result.geometry.coordinates;
+      const description = e.result.place_name;
+      console.log(coordinates);
+      popup(coordinates, description);
+      // map.current.fitBounds([coordinates, coordinates], {
+      //   maxZoom: 10,
+      // });
+    });
     //Control on the right top screen
     map.current.addControl(new mapboxgl.NavigationControl());
     map.current.addControl(new mapboxgl.GeolocateControl());
@@ -113,19 +141,19 @@ function App() {
   useEffect(() => {
     let hoveredPolygonId = null;
 
-    map.current.on("mouseenter", "climate-fills", (e) => {
+    map.current.on("mouseenter", "climate-fills-hover", (e) => {
       map.current.getCanvas().style.cursor = "pointer";
     });
 
-    map.current.on("mouseleave", "climate-fills", () => {
-      map.current.getCanvas().style.cursor = "";
+    map.current.on("mouseleave", "climate-fills-hover", () => {
+      map.current.getCanvas().style.cursor = "default";
     });
-    map.current.on("mousemove", "climate-fills", (e) => {
+    map.current.on("mousemove", "climate-fills-hover", (e) => {
       if (e.features.length > 0) {
         if (hoveredPolygonId !== null) {
           map.current.setFeatureState(
             {
-              source: "climate-fills",
+              source: "climate-fills-hover",
               id: hoveredPolygonId,
             },
             {
@@ -137,7 +165,7 @@ function App() {
 
         map.current.setFeatureState(
           {
-            source: "climate-fills",
+            source: "climate-fills-hover",
             id: hoveredPolygonId,
           },
           { hover: true }
@@ -145,11 +173,11 @@ function App() {
       }
     });
 
-    map.current.on("mouseleave", "climate-fills", () => {
+    map.current.on("mouseleave", "climate-fills-hover", () => {
       if (hoveredPolygonId !== null) {
         map.current.setFeatureState(
           {
-            source: "climate-fills",
+            source: "climate-fills-hover",
             id: hoveredPolygonId,
           },
           { hover: false }
@@ -158,22 +186,26 @@ function App() {
       }
     });
 
-    map.current.on("click", "climate-fills", (e) => {
-      const coordinates = e.features[0].geometry.coordinates.slice();
+    map.current.on("click", "climate-fills-hover", (e) => {
+      console.log(e.features);
+      const coordinates = e.features[0]?.geometry.coordinates.slice();
+      console.log(coordinates);
+      setMapProperties(e.features[0].properties.PDF);
 
-      const properties = e.features[0].properties;
-      setMapProperties(properties);
+      const description = `<p>Climate information <a href="${e.features[0].properties.PDF}" target="_blank"> ${e.features[0].properties.PDF}</a> </p>`;
 
-      const description = `<p>Climate information <a href="${mapProperties?.PDF}" target="_blank"> ${mapProperties?.PDF}</a> </p>`;
-      new mapboxgl.Popup()
-        .setLngLat(coordinates[0][0])
-        .setHTML(description)
-        .addTo(map.current);
+      popup(coordinates[0][0], description);
+      // new mapboxgl.Popup({
+      //   closeOnMove: true,
+      // })
+      //   .setLngLat(coordinates[0][0])
+      //   .setHTML(description)
+      //   .addTo(map.current);
     });
 
     //checking map properties
     map.current.on("style.load", () => {
-      const styleSources = map.current.style;
+      const styleSources = map.current;
       console.log(styleSources);
     });
   }, []);
