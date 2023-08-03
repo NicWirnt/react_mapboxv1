@@ -9,20 +9,6 @@ function App() {
   let map = null;
   const climateDataFill = { type: "geojson", data: climateData };
 
-  const toogleMaplayer = (state) => {
-    setMaplayer(state);
-    if (maplayer === 0) {
-      map.setLayoutProperty("postcode", "visibility", "none");
-      map.setLayoutProperty("climate", "visibility", "none");
-    } else if (maplayer === 1) {
-      map.setLayoutProperty("postcode", "visibility", "visible");
-      map.setLayoutProperty("climate", "visibility", "none");
-    } else if (maplayer === 2) {
-      map.setLayoutProperty("postcode", "visibility", "none");
-      map.setLayoutProperty("climate", "visibility", "visible");
-    }
-  };
-
   //make a popup display funciton
   const popup = (coordinates, description) => {
     new mapboxgl.Popup({
@@ -206,6 +192,20 @@ function App() {
       console.log(styleSources);
     });
   }, []);
+
+  const toogleMaplayer = (state) => {
+    setMaplayer(state);
+    if (maplayer === 0) {
+      map.setLayoutProperty("postcode", "visibility", "none");
+      map.setLayoutProperty("climate", "visibility", "none");
+    } else if (maplayer === 1) {
+      map.setLayoutProperty("postcode", "visibility", "visible");
+      map.setLayoutProperty("climate", "visibility", "none");
+    } else if (maplayer === 2) {
+      map.setLayoutProperty("postcode", "visibility", "none");
+      map.setLayoutProperty("climate", "visibility", "visible");
+    }
+  };
 
   return (
     <main className="relative overflow-hidden">
