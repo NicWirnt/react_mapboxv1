@@ -6,23 +6,20 @@ import climateData from "./data/climate.geojson";
 function App() {
   const [maplayer, setMaplayer] = useState(0);
   const [mapProperties, setMapProperties] = useState();
-  const mapContainer = useRef(null);
-  const map = useRef();
-  const search = useRef();
-
+  let map = null;
   const climateDataFill = { type: "geojson", data: climateData };
 
   const toogleMaplayer = (state) => {
     setMaplayer(state);
     if (maplayer === 0) {
-      map.current.setLayoutProperty("postcode", "visibility", "none");
-      map.current.setLayoutProperty("climate", "visibility", "none");
+      map.setLayoutProperty("postcode", "visibility", "none");
+      map.setLayoutProperty("climate", "visibility", "none");
     } else if (maplayer === 1) {
-      map.current.setLayoutProperty("postcode", "visibility", "visible");
-      map.current.setLayoutProperty("climate", "visibility", "none");
+      map.setLayoutProperty("postcode", "visibility", "visible");
+      map.setLayoutProperty("climate", "visibility", "none");
     } else if (maplayer === 2) {
-      map.current.setLayoutProperty("postcode", "visibility", "none");
-      map.current.setLayoutProperty("climate", "visibility", "visible");
+      map.setLayoutProperty("postcode", "visibility", "none");
+      map.setLayoutProperty("climate", "visibility", "visible");
     }
   };
 
@@ -33,12 +30,12 @@ function App() {
     })
       .setLngLat(coordinates)
       .setHTML(description)
-      .addTo(map.current);
+      .addTo(map);
   };
 
   useEffect(() => {
     //Initialise map
-    map.current = new mapboxgl.Map({
+    map = new mapboxgl.Map({
       //Map controls
       //Use data visualisation to style the map
       //mapbox://styles/frontzion/clkddr76n001801pmf9v3e5rf
@@ -50,7 +47,7 @@ function App() {
       //Pith map for 3D effect
       pitch: 10,
       //Map container
-      container: mapContainer.current,
+      container: "map",
       //Access Token MAPBOX
       accessToken: process.env.REACT_APP_MAPBOX_ACCESS_TOKEN,
     });
@@ -66,23 +63,23 @@ function App() {
       flyTo: false,
       collapsed: true,
 
-      // container: search.current,
+      // container: search,
     });
 
-    map.current.on("load", () => {
-      // map.current.addSource("climateHover", {
+    map.on("load", () => {
+      // map.addSource("climateHover", {
       //   type: "geojson",
       //   data: climateData,
       // });
 
       //condition to prevent double layers
       if (
-        !map.current.style._layers[
+        !map.style._layers[
           `climate-fills-hover
         `
         ]
       ) {
-        map.current.addLayer({
+        map.addLayer({
           id: "climate-fills-hover",
           type: "fill",
           source: climateDataFill,
@@ -99,7 +96,7 @@ function App() {
         });
       }
 
-      // map.current.addLayer({
+      // map.addLayer({
       //   id: "climate-borders",
       //   type: "line",
       //   source: climateDataFill,
@@ -112,27 +109,27 @@ function App() {
     });
 
     //setting the layer to none
-    map.current.on("load", () => {
-      map.current.setLayoutProperty("postcode", "visibility", "none");
-      map.current.setLayoutProperty("climate", "visibility", "none");
+    map.on("load", () => {
+      map.setLayoutProperty("postcode", "visibility", "none");
+      map.setLayoutProperty("climate", "visibility", "none");
     });
     //Displaying Search Bar
-    map.current.addControl(geoCoderSearch, "top-left");
+    map.addControl(geoCoderSearch, "top-left");
 
     geoCoderSearch.on("result", (e) => {
       const coordinates = e.result.geometry.coordinates;
       const description = e.result.place_name;
       console.log(coordinates);
       popup(coordinates, description);
-      // map.current.fitBounds([coordinates, coordinates], {
+      // map.fitBounds([coordinates, coordinates], {
       //   maxZoom: 10,
       // });
     });
     //Control on the right top screen
-    map.current.addControl(new mapboxgl.NavigationControl());
-    map.current.addControl(new mapboxgl.GeolocateControl());
-    map.current.addControl(new mapboxgl.FullscreenControl());
-    map.current.addControl(new mapboxgl.ScaleControl());
+    map.addControl(new mapboxgl.NavigationControl());
+    map.addControl(new mapboxgl.GeolocateControl());
+    map.addControl(new mapboxgl.FullscreenControl());
+    map.addControl(new mapboxgl.ScaleControl());
 
     //Load the map manually using GEOJSON and adding fill and border accordingly
   }, []);
@@ -141,17 +138,17 @@ function App() {
   useEffect(() => {
     let hoveredPolygonId = null;
 
-    map.current.on("mouseenter", "climate-fills-hover", (e) => {
-      map.current.getCanvas().style.cursor = "pointer";
+    map.on("mouseenter", "climate-fills-hover", (e) => {
+      map.getCanvas().style.cursor = "pointer";
     });
 
-    map.current.on("mouseleave", "climate-fills-hover", () => {
-      map.current.getCanvas().style.cursor = "default";
+    map.on("mouseleave", "climate-fills-hover", () => {
+      map.getCanvas().style.cursor = "default";
     });
-    map.current.on("mousemove", "climate-fills-hover", (e) => {
+    map.on("mousemove", "climate-fills-hover", (e) => {
       if (e.features.length > 0) {
         if (hoveredPolygonId !== null) {
-          map.current.setFeatureState(
+          map.setFeatureState(
             {
               source: "climate-fills-hover",
               id: hoveredPolygonId,
@@ -163,7 +160,7 @@ function App() {
         }
         hoveredPolygonId = e.features[0].id;
 
-        map.current.setFeatureState(
+        map.setFeatureState(
           {
             source: "climate-fills-hover",
             id: hoveredPolygonId,
@@ -173,9 +170,9 @@ function App() {
       }
     });
 
-    map.current.on("mouseleave", "climate-fills-hover", () => {
+    map.on("mouseleave", "climate-fills-hover", () => {
       if (hoveredPolygonId !== null) {
-        map.current.setFeatureState(
+        map.setFeatureState(
           {
             source: "climate-fills-hover",
             id: hoveredPolygonId,
@@ -186,7 +183,7 @@ function App() {
       }
     });
 
-    map.current.on("click", "climate-fills-hover", (e) => {
+    map.on("click", "climate-fills-hover", (e) => {
       console.log(e.features);
       const coordinates = e.features[0]?.geometry.coordinates.slice();
       console.log(coordinates);
@@ -200,12 +197,12 @@ function App() {
       // })
       //   .setLngLat(coordinates[0][0])
       //   .setHTML(description)
-      //   .addTo(map.current);
+      //   .addTo(map);
     });
 
     //checking map properties
-    map.current.on("style.load", () => {
-      const styleSources = map.current;
+    map.on("style.load", () => {
+      const styleSources = map;
       console.log(styleSources);
     });
   }, []);
@@ -213,7 +210,7 @@ function App() {
   return (
     <main className="relative overflow-hidden">
       <div className="h-screen w-screen flex flex-row items-center justify-center">
-        <div ref={mapContainer} className="h-[90vh] w-[90vw]  bg-slate-500 ">
+        <div id="map" className="h-[90vh] w-[90vw]  bg-slate-500 ">
           <div className="absolute right-2 top-[50%] z-10">
             <div className="flex flex-col gap-2">
               <button
