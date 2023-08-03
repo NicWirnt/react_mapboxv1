@@ -88,7 +88,7 @@ function App() {
           source: climateDataFill,
           layout: {},
           paint: {
-            "fill-color": "#627BC1",
+            "fill-color": "rgba(119, 248, 99, 0.9)",
             "fill-opacity": [
               "case",
               ["boolean", ["feature-state", "hover"], false],
