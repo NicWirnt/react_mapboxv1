@@ -2,11 +2,17 @@ import React, { useEffect, useRef, useState } from "react";
 import mapboxgl from "mapbox-gl";
 import * as MapboxGeocoder from "@mapbox/mapbox-gl-geocoder";
 import climateData from "./data/climate.geojson";
+import { getPostcode } from "./helper/axios";
+import DataCard from "./components/DataCard";
 
 function App() {
   const [maplayer, setMaplayer] = useState(0);
-  const [mapProperties, setMapProperties] = useState();
+  const [mapProperties, setMapProperties] = useState("");
+  const [postcode, setPostcode] = useState("");
+  const [climateInfo, setClimateInfo] = useState();
+  const [climatezone, setClimatezone] = useState("");
   const mapContainer = useRef(null);
+  const geoCoder = useRef();
   const map = useRef();
   const search = useRef();
 
@@ -27,12 +33,12 @@ function App() {
   };
 
   //make a popup display funciton
-  const popup = (coordinates, description) => {
+  const popup = (coordinates, description, climateData) => {
     new mapboxgl.Popup({
-      closeOnMove: true,
+      closeOnMove: false,
     })
       .setLngLat(coordinates)
-      .setHTML(description)
+      .setHTML(description + " " + (climateData ? climateData : ""))
       .addTo(map.current);
   };
 
@@ -56,17 +62,16 @@ function App() {
     });
 
     // Search Bar
-    const geoCoderSearch = new MapboxGeocoder({
+    geoCoder.current = new MapboxGeocoder({
       accessToken: process.env.REACT_APP_MAPBOX_ACCESS_TOKEN,
       mapboxgl: mapboxgl,
       //limit country only for australia
       countries: "au",
       //limit search country, region, postcode, district, place, locality, neighborhood, address, poi, poi.landmark
-      types: "postcode",
+      // types: "postcode",
       flyTo: false,
       collapsed: true,
-
-      // container: search.current,
+      container: search.current,
     });
 
     map.current.on("load", () => {
@@ -116,18 +121,7 @@ function App() {
       map.current.setLayoutProperty("postcode", "visibility", "none");
       map.current.setLayoutProperty("climate", "visibility", "none");
     });
-    //Displaying Search Bar
-    map.current.addControl(geoCoderSearch, "top-left");
 
-    geoCoderSearch.on("result", (e) => {
-      const coordinates = e.result.geometry.coordinates;
-      const description = e.result.place_name;
-      console.log(coordinates);
-      popup(coordinates, description);
-      // map.current.fitBounds([coordinates, coordinates], {
-      //   maxZoom: 10,
-      // });
-    });
     //Control on the right top screen
     map.current.addControl(new mapboxgl.NavigationControl());
     map.current.addControl(new mapboxgl.GeolocateControl());
@@ -136,6 +130,43 @@ function App() {
 
     //Load the map manually using GEOJSON and adding fill and border accordingly
   }, []);
+
+  //geoCoder useEffect or search bar
+  useEffect(() => {
+    //Displaying Search Bar
+    const searchBar = document.getElementById("search");
+    if (!searchBar.hasChildNodes()) {
+      searchBar.appendChild(geoCoder.current.onAdd(map.current));
+    }
+
+    geoCoder.current.on("result", async (e) => {
+      const coordinates = e.result.geometry.coordinates;
+      const description =
+        e.result.place_name +
+        ", please click on the map for more detailed information";
+      setPostcode(e.result.text);
+      // const postcodeWithoutzero = parseInt(e.result.text);
+      const respond = await getPostcode(e.result.text);
+      setClimateInfo(respond);
+      console.log(e.result);
+      console.log(respond);
+      // let climate = null;
+      for (let i = 0; i < respond.length; i++) {
+        if (respond[i].climate_zone !== "") {
+          // climate = respond[i].climate_zone;
+          setClimatezone(respond[i].climate_zone);
+          break;
+        }
+      }
+      popup(coordinates, description, climatezone);
+      // map.current.fitBounds([coordinates, coordinates], {
+      //   maxZoom: 10,
+      // });
+    });
+    geoCoder.current.on("clear", () => {
+      setPostcode("");
+    });
+  }, [postcode]);
 
   //UseEffect mouse hovering feature
   useEffect(() => {
@@ -192,9 +223,21 @@ function App() {
       console.log(coordinates);
       setMapProperties(e.features[0].properties.PDF);
 
-      const description = `<p>Climate information <a href="${e.features[0].properties.PDF}" target="_blank"> ${e.features[0].properties.PDF}</a> </p>`;
+      const description = `
+      <p>
+       <a href="${e.features[0].properties.PDF}" target="_blank" style={{
+        textDecoration: "underline",
+      }} >Click here</a>
+      for more information about the climate in this area
+       </p>
+      `;
 
-      popup(coordinates[0][0], description);
+      if (e.features[0].geometry.type === "Polygon") {
+        popup(coordinates[0][0], description);
+      } else {
+        popup(coordinates[0][0][0], description);
+      }
+
       // new mapboxgl.Popup({
       //   closeOnMove: true,
       // })
@@ -214,6 +257,16 @@ function App() {
     <main className="relative overflow-hidden">
       <div className="h-screen w-screen flex flex-row items-center justify-center">
         <div ref={mapContainer} className="h-[90vh] w-[90vw]  bg-slate-500 ">
+          <div
+            id="search-datacard"
+            className="absolute left-4 top-4 z-10 mr-10"
+          >
+            <div id="search" className="z-20"></div>
+            {postcode !== "" && (
+              <DataCard climateInfo={climateInfo} climatezone={climatezone} />
+            )}
+          </div>
+
           <div className="absolute right-2 top-[50%] z-10">
             <div className="flex flex-col gap-2">
               <button

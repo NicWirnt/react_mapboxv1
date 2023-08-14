@@ -1,6 +1,6 @@
 import axios from "axios";
 
-const postcodeUrl = "https://greenways.vercel.app/api/data?postcode=";
+const apiUrl = "http://localhost/mapbox_backend/";
 
 const apiProcessor = async ({ method, url, dataObj }) => {
   try {
@@ -20,7 +20,7 @@ const apiProcessor = async ({ method, url, dataObj }) => {
 
 //GET API POSTCODE FROM GREENWAYS
 export const getPostcode = async (postcode) => {
-  const url = postcodeUrl + postcode;
+  const url = apiUrl + `postcode?q=${postcode}`;
   return apiProcessor({
     method: "get",
     url,
